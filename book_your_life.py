@@ -1,9 +1,12 @@
 import requests
 from pyquery import PyQuery as pq
+import datetime
 import time
 import socks
 import socket
 import os
+import pymongo
+from pymongo import MongoClient
 
 # socks.setdefaultproxy(proxy_type=socks.PROXY_TYPE_SOCKS5, addr="127.0.0.1", port=9050)
 # socket.socket = socks.socksocket
@@ -11,6 +14,10 @@ import os
 headers = {'Referer':'https://www.books.com.tw/',#如某些網站（如p站）要檢查referer，就給他加上
 'User-Agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.131 Safari/537.36'#每個爬蟲必備的偽裝
 }
+
+client = MongoClient('127.0.0.1', 27017) # localhost
+db = client['book_your_life']
+collect = db['ranking_100']
 
 url = 'https://www.books.com.tw/'
 
@@ -36,29 +43,36 @@ ranking_today_chinese_book_item = ranking_today_chinese_book('li.item').items()
 i = 1
 for ranking_today_chinese_book in ranking_today_chinese_book_item:
     rankingTodayChineseBookDict = {}
-    rankingTodayChineseBookDict['rank'] = ranking_today_chinese_book('.no').text()
+    rankingTodayChineseBookDict['ranking'] = ranking_today_chinese_book('.no').text()
     rankingTodayChineseBookDict['title'] = ranking_today_chinese_book('.type02_bd-a > h4').text()
+    rankingTodayChineseBookDict['author'] = ranking_today_chinese_book('.msg > li > a').text()
+    rankingTodayChineseBookDict['discount'] = ranking_today_chinese_book('.price_a > strong:nth-child(1) >b').text()
+    rankingTodayChineseBookDict['price'] = ranking_today_chinese_book('.price_a > strong:nth-child(2) >b').text()
     rankingTodayChineseBookDict['url'] = ranking_today_chinese_book('.type02_bd-a > h4 > a').attr('href').replace(' ','')[:-15]
+    rankingTodayChineseBookDict['add_time'] = datetime.datetime.now()
+    rs = collect.insert_one(rankingTodayChineseBookDict)
+    # object_id = rs.inserted_id
+    print(rankingTodayChineseBookDict)
     """
     進入書的詳細介紹
     """    
-    try:
-        each_book_url = rankingTodayChineseBookDict['url']
-        mainBook = requests.get(each_book_url)
-        mainBook_text = mainBook.text
-        mainBook = pq(mainBook_text)
-        print(each_book_url)
-        print(requests.get("http://icanhazip.com").text)
-        print('===== ',i ,' =====')
-        i += 1
-        time.sleep(1)
-        # os.system("killall -HUP tor")
+    # try:
+    #     each_book_url = rankingTodayChineseBookDict['url']
+    #     mainBook = requests.get(each_book_url)
+    #     mainBook_text = mainBook.text
+    #     mainBook = pq(mainBook_text)
+    #     print(each_book_url)
+    #     print(requests.get("http://icanhazip.com").text)
+    #     print('===== ',i ,' =====')
+    #     i += 1
+    #     time.sleep(1)
+    #     # os.system("killall -HUP tor")
 
-    except Exception as e:
-        print(str(e))
-        continue
-    else:
-        continue
+    # except Exception as e:
+    #     print(str(e))
+    #     continue
+    # else:
+    #     continue
 
 # ranking_today_chinese_book_item = ranking_today_chinese_book('.clearfix > ul > li:nth-child(1)')
 # print(ranking_today_chinese_book_item('.type02_bd-a > h4 > a').attr('href'))
